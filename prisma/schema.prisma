@@ -1,16 +1,90 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// prisma/schema.prisma
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  FILE
+}
+
+enum MemberRole {
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  displayName   String?
+  avatarUrl     String?
+  lastSeen      DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  // Relations
+  memberships   ConversationMember[]
+  messages      Message[]
+}
+
+model Conversation {
+  id            String   @id @default(uuid())
+  isGroup       Boolean  @default(false)
+  name          String?  // Null for 1-on-1s
+  groupIcon     String?
+
+  // uniqueKey is used for 1-on-1s: a hash of "id1:id2"
+  // ensuring only one private room exists between two users.
+  uniqueKey     String?  @unique
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  members       ConversationMember[]
+  messages      Message[]
+}
+
+model ConversationMember {
+  id             String     @id @default(uuid())
+  userId         String
+  conversationId String
+  role           MemberRole @default(MEMBER)
+
+  // High-performance unread logic
+  lastReadAt     DateTime   @default(now())
+  joinedAt       DateTime   @default(now())
+
+  // Relations
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, conversationId])
+}
+
+model Message {
+  id             String      @id @default(uuid())
+  content        String?     // Null if sending just an image/file
+  type           MessageType @default(TEXT)
+  fileUrl        String?     // Link to Supabase Storage / R2
+
+  senderId       String
+  conversationId String
+
+  createdAt      DateTime    @default(now())
+
+  // Relations
+  sender         User         @relation(fields: [senderId], references: [id])
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId]) // Faster message retrieval for active chats
 }
