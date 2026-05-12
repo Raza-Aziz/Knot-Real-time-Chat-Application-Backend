@@ -35,6 +35,26 @@ export class AuthController {
     };
   }
 
+  @Post()
+  @HttpCode(HttpStatus.OK)
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { user, session } = await this.authService.login(dto);
+
+    if (!session) {
+      throw new UnauthorizedException('Invalid Credentials');
+    }
+
+    setCookies(res, session.access_token, session.refresh_token);
+
+    return {
+      message: 'Welcome Back!',
+      user,
+    };
+  }
+
   @Get()
   findAll() {
     return this.authService.findAll();
