@@ -1,9 +1,15 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { SignupDto } from './dto/signup.dto';
 import { SupabaseService } from 'src/supabase/supabase.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { User } from '@supabase/supabase-js';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +18,8 @@ export class AuthService {
     private supabase: SupabaseService,
   ) {}
 
+  // INFO : Signup service
+  // TODO : Understand and document its working (and maybe make an algo or flowchart) to make it framework-agnostic
   async signUp(dto: SignupDto) {
     // 1. Create User in Supabase Auth
     const { data, error } = await this.supabase.client.auth.signUp({
@@ -43,19 +51,27 @@ export class AuthService {
     }
   }
 
-  findAll() {
-    return `This action returns all auth`;
-  }
+  // INFO : Login service
+  // TODO : Understand and document its working (and maybe make an algo or flowchart) to make it framework-agnostic
+  async login(dto: LoginDto) {
+    const { data, error } = await this.supabase.client.auth.signInWithPassword({
+      email: dto.email,
+      password: dto.password,
+    });
 
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
-  }
+    if (error) throw new BadRequestException(error.message);
+    if (!data.user) throw new BadRequestException('Signup Failed');
 
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
-  }
+    const userProfile = await this.prisma.user.findUnique({
+      where: { id: data.user.id },
+    });
 
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+    // if (!userProfile) return UnauthorizedException('Profile not found');
+    if (!userProfile) return new NotFoundException('Profile not found');
+
+    return {
+      user: userProfile,
+      session: data.session,
+    };
   }
 }
