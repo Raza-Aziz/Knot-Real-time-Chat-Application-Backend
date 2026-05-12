@@ -67,7 +67,7 @@ export class AuthService {
     });
 
     // if (!userProfile) return UnauthorizedException('Profile not found');
-    if (!userProfile) return new NotFoundException('Profile not found');
+    if (!userProfile) throw new NotFoundException('Profile not found');
 
     return {
       user: userProfile,
