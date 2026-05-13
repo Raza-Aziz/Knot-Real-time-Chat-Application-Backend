@@ -53,4 +53,23 @@ export class AuthController {
       user,
     };
   }
+
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) res: Response) {
+    await this.authService.logout();
+
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+    });
+
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+    });
+
+    return { message: 'Logged out successfully' };
+  }
 }

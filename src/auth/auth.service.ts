@@ -74,4 +74,12 @@ export class AuthService {
       session: data.session,
     };
   }
+
+  async logout() {
+    const { error } = await this.supabase.client.auth.signOut();
+
+    if (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
 }
